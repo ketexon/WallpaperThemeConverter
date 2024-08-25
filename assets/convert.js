@@ -1,3 +1,6 @@
+"use strict";
+const THEME_LOCAL_STORAGE_KEY = "wtc-theme";
+
 // Canvas loading variables
 var imageLoader = document.getElementById('drop-zone');
 imageLoader.addEventListener('change', e => {
@@ -46,8 +49,7 @@ customMenu.style.display = 'none';
 
 // Global variables
 let ogimage;
-let theme = [];
-let nodes = 0;
+let theme = localStorage.getItem(THEME_LOCAL_STORAGE_KEY)?.split(",")?.map(n => parseInt(n)) ?? [];
 let colour_palette_count = 0;
 let menuVisible = false;
 let list_of_themes;
@@ -58,6 +60,8 @@ fetch("./assets/themes.json")
 .then((data) => {
     list_of_themes = data;
 });
+
+displayPalette();
 
 // Loads image onto canvas
 function handleImage(source){
@@ -117,27 +121,44 @@ function openCustomMenu(){
     if (menuVisible == true){
         document.getElementById("custom-menu").style.display = "none";
         menuVisible = false;
-        Done();
     } else {
         document.getElementById("custom-menu").style.display = "block";
         menuVisible = true;
     }
 }
 
+function openCustomFromCurrentMenu(){
+    while(colours.firstChild){
+        colours.removeChild(colours.firstChild);
+    }
+
+    for(let i = 0; i < theme.length / 3; ++i){
+        const channels = theme.slice(i * 3, i * 3 + 3);
+        addColour();
+        const color = '#' + channels.map(c => c.toString(16).padStart(2, '0')).join("");
+        colours.lastElementChild.value = color;
+    }
+
+    if(menuVisible) return;
+
+    openCustomMenu();
+}
+
 // Adds a colour swatch when pressed
 function addColour(){
     const colour_node = document.createElement("input");
     colour_node.setAttribute("type","color");
-    colour_node.id = ("node" + nodes);
+    colour_node.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        colours.removeChild(colour_node);
+    })
     colours_div.appendChild(colour_node);
-    nodes++;
 }
 
 // Removes a colour swatch when pressed
 function removeColour(){
-    if (nodes > 0) {
+    if(colours.lastElementChild){
         document.getElementById("colours").removeChild(colours_div.lastElementChild);
-        nodes--;
     }
 }
 
@@ -147,15 +168,14 @@ function closeCustomMenu(){
     var hex_parsed = 0;
     var colour_palette = [];
 
-    for(var i = 0; i < nodes; i++){
-        hex_colour = document.getElementById("node"+i).value;
+    for(let colour of colours.children){
+        hex_colour = colour.value;
         hex_parsed = hex_colour.match(/^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i);
-        colour_palette[i*3] = parseInt(hex_parsed[1],16);
-        colour_palette[i*3+1] = parseInt(hex_parsed[2],16);
-        colour_palette[i*3+2] = parseInt(hex_parsed[3],16);
+        colour_palette.push(parseInt(hex_parsed[1],16), parseInt(hex_parsed[2],16), parseInt(hex_parsed[3],16));
     }
 
     theme = colour_palette;
+    updateLocalStorage();
     customMenu.style.display = "none";
     menuVisible = false;
     displayPalette();
@@ -188,16 +208,21 @@ function convertImage(){
     var minimum = 0;
     var x = 0;
 
+    const invert = document.querySelector("#invert-colors").checked;
+
     // Create the canvas to the dimensions of the image
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // For every pixel in the image
     for (var i = 0; i < numPixels; i+=4) {
+        const pixel0 = invert ? 255 - pixels[i] : pixels[i];
+        const pixel1 = invert ? 255 - pixels[i+1] : pixels[i+2];
+        const pixel2 = invert ? 255 - pixels[i+2] : pixels[i+2];
         minimum = 0;
         // For the amount of colours there are in the theme
         for (var j = 0; j < theme.length; j+=3) {
             // 3d distance formula
-            lens[x] = (Math.sqrt(Math.pow(pixels[i]-theme[j],2)+Math.pow(pixels[i+1]-theme[j+1],2)+Math.pow(pixels[i+2]-theme[j+2],2)));
+            lens[x] = (Math.sqrt(Math.pow(pixel0-theme[j],2)+Math.pow(pixel1-theme[j+1],2)+Math.pow(pixel2-theme[j+2],2)));
             x += 1;  
         }
         x = 0;
@@ -223,7 +248,7 @@ function convertImage(){
 
 //Download function. Works on desktop browsers only at the moment.
 function downloadImage(){
-    image = canvas.toDataURL("image/png");
+    const image = canvas.toDataURL("image/png");
     var link = document.createElement('a');
     link.download = "wallpaper-theme-converter.png";
     link.href = image;
@@ -233,5 +258,10 @@ function downloadImage(){
 // Change values from RGB values of each palette, stored in themes.json
 function changeTheme(name){
     theme = list_of_themes[name];
+    updateLocalStorage();
     displayPalette();
+}
+
+function updateLocalStorage(){
+    localStorage.setItem(THEME_LOCAL_STORAGE_KEY, theme);
 }

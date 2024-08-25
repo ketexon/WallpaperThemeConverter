@@ -55,10 +55,12 @@
       <hr class="body"/>
 
       <button class = "theme-button" id ="custom" type="button" onclick="openCustomMenu()"> Custom Theme </button>
+      <button class = "theme-button" id ="custom-from-current" type="button" onclick="openCustomFromCurrentMenu()"> Custom From Current Theme </button>
      
       <div id="custom-menu">
         <button  type="button" onclick="addColour()">+</button>
         <button  type="button" onclick="removeColour()">-</button>
+        <p>Right click on a color to delete it.</p>
 
         <div id="colours" style="padding: 0.5em; display:block;">
         </div>
@@ -67,6 +69,7 @@
       </div>
 
       <hr class="body"/>
+        <div><input type="checkbox" id="invert-colors" name="invert-colors"/><label for="invert-colors">Invert colors</label></div>
         <button class="important-button" id="convert" type="button" onclick="initialize()">Convert</button>
       </div>
     </div>
